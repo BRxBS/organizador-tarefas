@@ -3,6 +3,7 @@ import { FlatList, View } from "react-native";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import AntDesign from "@expo/vector-icons/AntDesign";
+import { Link } from "expo-router";
 import ItemGroup, { DATA } from "../GroupItem";
 import { styles } from "./styles";
 
@@ -11,9 +12,11 @@ export default function ExistingGroups() {
         <View>
             <ThemedView style={styles.titleContainer}>
                 <ThemedText type="title">Grupos</ThemedText>
-                <View style={styles.wrapPlus}>
-                    <AntDesign name="plus" size={18} color="white" />
-                </View>
+                <Link href="/day">
+                    <View style={styles.wrapPlus}>
+                        <AntDesign name="plus" size={18} color="white" />
+                    </View>
+                </Link>
             </ThemedView>
             <View>
                 <FlatList
