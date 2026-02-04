@@ -53,7 +53,7 @@ export default function ItemDay({
     style,
 }: ItemProps) {
     return (
-        <Link href="/modal" style={styles.container}>
+        <Link href="/day" style={styles.container}>
             <Text
             // style={[styles.title, { color: textColor }]}
             >
