@@ -10,16 +10,9 @@ export default function TaskDescription() {
         <View>
             <ThemedView style={styles.titleContainer}>
                 <ThemedText type="title">Descrição da tarefa</ThemedText>
-                {/* <View style={styles.wrapPlus}>
-                    <AntDesign name="plus" size={18} color="white" />
-                </View> */}
             </ThemedView>
             <View>
-                <TextInput
-                    style={styles.input}
-                    // onChangeText={onChangeText}
-                    // value={text}
-                />
+                <TextInput style={styles.input} />
             </View>
         </View>
     );

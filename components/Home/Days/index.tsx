@@ -1,33 +1,35 @@
-import { View } from "react-native";
-
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
-import ItemDay, { DATA } from "../Day";
-import { styles } from "./styles";
+import { DAYS_DATA } from "@/util/days";
+import { StyleSheet, View } from "react-native";
+import ItemDay from "../ItemDay";
 
 export default function Days() {
     return (
-        <View>
-            <ThemedView style={styles.titleContainer}>
-                <ThemedText type="title">Grupos</ThemedText>
-                {/* <View style={styles.wrapPlus}>
-                    <AntDesign name="plus" size={18} color="white" />
-                </View> */}
-            </ThemedView>
-            <View style={styles.wrapDays}>
-                {DATA.map((item, index) => (
-                    <ItemDay
-                        key={item.id}
-                        item={item}
-                        onPress={() => {}}
-                        backgroundColor="#fff"
-                        textColor="#000"
-                    />
+        <View style={styles.container}>
+            <View style={styles.grid}>
+                {DAYS_DATA.map((item, index) => (
+                    <ItemDay key={item.id} item={item} index={index} />
                 ))}
-                {DATA.length % 3 === 1 && (
-                    <View style={{ width: "30%" }} /> // só um espaço vazio à esquerda
-                )}
             </View>
         </View>
     );
 }
+
+const styles = StyleSheet.create({
+    container: {
+        // padding: 20,
+        flex: 1,
+    },
+    title: {
+        color: "#FFF",
+        fontSize: 18,
+        fontWeight: "bold",
+        marginBottom: 20,
+    },
+    grid: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        justifyContent: "center",
+        // justifyContent: "center", // Isso centraliza os itens, inclusive o último
+        // gap: 12, // Cria o espaçamento uniforme entre os quadrados
+    },
+});

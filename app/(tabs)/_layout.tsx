@@ -5,6 +5,7 @@ import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { FontAwesome5 } from "@expo/vector-icons";
 import AntDesign from "@expo/vector-icons/AntDesign";
 
 export default function TabLayout() {
@@ -34,17 +35,17 @@ export default function TabLayout() {
                     title: "Criar Tarefa",
                     tabBarIcon: ({ color }) => (
                         // <IconSymbol size={28} name="house.fill" color={color} />
-                        <AntDesign name="plus" size={24} color={color} />
+                        <FontAwesome5 name="tasks" size={24} color={color} />
                     ),
                 }}
             />
             <Tabs.Screen
                 name="groups"
                 options={{
-                    title: "Criar Trupo",
+                    title: "Criar Grupo",
                     tabBarIcon: ({ color }) => (
                         // <IconSymbol size={28} name="house.fill" color={color} />
-                        <AntDesign name="plus" size={24} color={color} />
+                        <AntDesign name="group" size={24} color={color} />
                     ),
                 }}
             />

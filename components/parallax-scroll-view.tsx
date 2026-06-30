@@ -12,19 +12,20 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { ThemedText } from "./themed-text";
 
-const HEADER_HEIGHT = 200;
+const DEFAULT_HEADER_HEIGHT = 200;
 
 type Props = PropsWithChildren<{
     // headerImage: ReactElement;
     headerBackgroundColor: { dark: string; light: string };
     title: string;
+    headerHeight?: number;
 }>;
 
 export default function ParallaxScrollView({
     children,
-    // headerImage,
     headerBackgroundColor,
     title,
+    headerHeight = DEFAULT_HEADER_HEIGHT,
 }: Props) {
     const backgroundColor = useThemeColor({}, "background");
     const colorScheme = useColorScheme() ?? "light";
@@ -36,14 +37,18 @@ export default function ParallaxScrollView({
                 {
                     translateY: interpolate(
                         scrollOffset.value,
-                        [-HEADER_HEIGHT, 0, HEADER_HEIGHT],
-                        [-HEADER_HEIGHT / 2, 0, HEADER_HEIGHT * 0.75],
+                        [-DEFAULT_HEADER_HEIGHT, 0, DEFAULT_HEADER_HEIGHT],
+                        [
+                            -DEFAULT_HEADER_HEIGHT / 2,
+                            0,
+                            DEFAULT_HEADER_HEIGHT * 0.75,
+                        ],
                     ),
                 },
                 {
                     scale: interpolate(
                         scrollOffset.value,
-                        [-HEADER_HEIGHT, 0, HEADER_HEIGHT],
+                        [-DEFAULT_HEADER_HEIGHT, 0, DEFAULT_HEADER_HEIGHT],
                         [2, 1, 1],
                     ),
                 },
@@ -52,22 +57,18 @@ export default function ParallaxScrollView({
     });
 
     return (
-        <View
-            // ref={scrollRef}
-            style={{ backgroundColor, flex: 1 }}
-            // scrollEventThrottle={16}
-        >
+        <View style={{ backgroundColor, flex: 1 }}>
             <Animated.View
                 style={[
                     styles.header,
-                    { backgroundColor: headerBackgroundColor[colorScheme] },
+                    {
+                        backgroundColor: headerBackgroundColor[colorScheme],
+                        height: headerHeight,
+                    },
                     headerAnimatedStyle,
                 ]}
             >
-                {/* {headerImage} */}
-                {/* <View> */}
                 <ThemedText style={styles.titleText}>{title}</ThemedText>
-                {/* </View> */}
             </Animated.View>
             <ThemedView style={styles.content}>{children}</ThemedView>
         </View>
@@ -79,7 +80,6 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     header: {
-        height: HEADER_HEIGHT,
         overflow: "hidden",
     },
     content: {

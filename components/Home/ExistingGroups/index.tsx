@@ -1,39 +1,24 @@
-import { FlatList, View } from "react-native";
+import React from "react";
+import { StyleSheet, View } from "react-native";
+import ItemGroup from "../ ItemGroup"; // Importando o componente de item
 
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
-import AntDesign from "@expo/vector-icons/AntDesign";
-import { Link } from "expo-router";
-import ItemGroup, { DATA } from "../GroupItem";
-import { styles } from "./styles";
-
-export default function ExistingGroups() {
+// Recebemos os grupos via props da HomeScreen
+export default function ExistingGroups({ groups }: { groups: any[] }) {
     return (
-        <View>
-            <ThemedView style={styles.titleContainer}>
-                <ThemedText type="title">Grupos</ThemedText>
-                <Link href="/day">
-                    <View style={styles.wrapPlus}>
-                        <AntDesign name="plus" size={18} color="white" />
-                    </View>
-                </Link>
-            </ThemedView>
-            <View>
-                <FlatList
-                    data={DATA}
-                    renderItem={({ item }) => (
-                        <ItemGroup
-                            item={item}
-                            onPress={() => {
-                                /* handle press */
-                            }}
-                            backgroundColor="#fff"
-                            textColor="#000"
-                        />
-                    )}
-                    keyExtractor={(item) => item.id}
-                />
-            </View>
+        <View style={styles.listContainer}>
+            {/* 
+               Usamos .map em vez de FlatList aqui porque a lista 
+               está dentro de outro ScrollView (o Parallax).
+            */}
+            {groups.map((item) => (
+                <ItemGroup key={item.id} item={item} />
+            ))}
         </View>
     );
 }
+
+const styles = StyleSheet.create({
+    listContainer: {
+        marginBottom: 20, // Espaço entre a lista de grupos e a seção de dias
+    },
+});
