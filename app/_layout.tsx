@@ -56,6 +56,13 @@ export default function RootLayout() {
                                 title: "Detalhes do Dia",
                             }}
                         />
+                        <Stack.Screen
+                            name="screens/all-tasks"
+                            options={{
+                                headerShown: false, // Recomendado esconder o header padrão já que você usa o Parallax
+                                title: "Todas as tarefas",
+                            }}
+                        />
                     </Stack>
                 </Suspense>
                 <StatusBar style="auto" />

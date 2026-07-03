@@ -45,27 +45,33 @@ export default function GroupsScreen() {
     };
 
     const handleDelete = (id: any) => {
-        // Log para testar se o ID está chegando
-        console.log("Solicitada exclusão do ID:", id);
-
-        Alert.alert("Excluir", "Deseja realmente remover este grupo?", [
-            { text: "Não", style: "cancel" },
-            {
-                text: "Sim",
-                onPress: async () => {
-                    try {
-                        await groupDb.remove(id); // Chama o banco
-                        await loadGroups(); // Recarrega a lista na tela
-                        Alert.alert("Sucesso", "Grupo removido.");
-                    } catch (error) {
-                        Alert.alert(
-                            "Erro",
-                            "Não foi possível excluir. Verifique se existem tarefas ligadas a este grupo.",
-                        );
-                    }
+        Alert.alert(
+            "Excluir Grupo?",
+            "Atenção: Ao remover este grupo, TODAS as tarefas vinculadas a ele também serão excluídas permanentemente. Deseja continuar?",
+            [
+                { text: "Cancelar", style: "cancel" },
+                {
+                    text: "Sim, Excluir Tudo",
+                    style: "destructive", // No iOS o botão fica vermelho
+                    onPress: async () => {
+                        try {
+                            await groupDb.remove(id); // O SQLite cuidará de apagar as tarefas por causa do ON DELETE CASCADE
+                            await loadGroups();
+                            Alert.alert(
+                                "Sucesso",
+                                "Grupo e tarefas removidos.",
+                            );
+                        } catch (error) {
+                            console.error(error);
+                            Alert.alert(
+                                "Erro",
+                                "Não foi possível excluir o grupo.",
+                            );
+                        }
+                    },
                 },
-            },
-        ]);
+            ],
+        );
     };
 
     const handleSave = async () => {

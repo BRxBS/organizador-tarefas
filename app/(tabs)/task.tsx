@@ -1,5 +1,5 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     Alert,
     ScrollView,
@@ -14,7 +14,7 @@ import TemporaryPickerModal from "@/components/Task/TemporaryPickerModal";
 import { useGroupDatabase } from "@/database/useGroupDatabase";
 import { useTaskDatabase } from "@/database/useTaskDatabase";
 import { DAY_AMANHA, DAY_HOJE } from "@/util/days";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import DayPickerModal from "../../components/Task/DayPickerModal";
 import GroupPickerModal from "../../components/Task/GroupPickerModal";
 import SettingCard from "../../components/Task/Settings";
@@ -40,7 +40,6 @@ export default function TaskScreen() {
     // UI States
     const [showTimePicker, setShowTimePicker] = useState(false);
     const [showGroupModal, setShowGroupModal] = useState(false);
-    const [showDaysModal, setShowDaysModal] = useState(false);
     const [showTempModal, setShowTempModal] = useState(false);
     const [showRoutineModal, setShowRoutineModal] = useState(false);
 
@@ -53,6 +52,15 @@ export default function TaskScreen() {
         if (!timeStr) return 0;
         const [hours, minutes] = timeStr.split(":").map(Number);
         return hours * 60 + minutes;
+    };
+
+    const resetForm = () => {
+        setNome("");
+        setDescricao("");
+        setGrupoId(null);
+        setGrupoNome("Selecionar");
+        setHoraAlarme(null);
+        setDiasSelecionados([]);
     };
 
     useEffect(() => {
@@ -108,13 +116,37 @@ export default function TaskScreen() {
         loadTaskForEdit();
     }, [id, isEditing]);
 
-    const handleOpenPicker = (type: "temp" | "routine") => {
-        if (type === "temp") {
-            setShowTempModal(true);
-        } else {
-            setShowRoutineModal(true);
-        }
-    };
+    useFocusEffect(
+        useCallback(() => {
+            // Esta função vai rodar sempre que você entrar na tela
+            const loadData = async () => {
+                try {
+                    const allGroups = await groupDb.getAll();
+                    setGroups(allGroups);
+
+                    // Se estiver editando, atualiza o nome do grupo caso ele tenha mudado
+                    if (isEditing && id) {
+                        const taskIdStr = Array.isArray(id) ? id[0] : id;
+                        const task = await taskDb.getById(Number(taskIdStr));
+                        const currentGroup = allGroups.find(
+                            (g) => g.id === task.grupo_id,
+                        );
+                        if (currentGroup) {
+                            setGrupoNome(currentGroup.nome);
+                        }
+                    }
+                } catch (error) {
+                    console.error("Erro ao atualizar grupos:", error);
+                }
+            };
+
+            loadData();
+            taskDb.cleanupTemporaryTasks();
+
+            // Opcional: Log para você ver no terminal que atualizou
+            console.log("Grupos recarregados na TaskScreen");
+        }, [id, isEditing]), // Dependências do useCallback
+    );
 
     const filteredGroups = useMemo(() => {
         if (!diasSelecionados.includes(DAY_HOJE)) return groups;
@@ -153,6 +185,7 @@ export default function TaskScreen() {
                 await taskDb.create(taskData);
             }
 
+            resetForm();
             Alert.alert(
                 "Sucesso",
                 isEditing ? "Tarefa atualizada!" : "Tarefa criada!",
@@ -186,13 +219,8 @@ export default function TaskScreen() {
                     text: "Sim, apagar",
                     style: "destructive",
                     onPress: () => {
-                        // Limpa os campos
-                        setNome("");
-                        setDescricao("");
-                        setGrupoId(null);
-                        setGrupoNome("Selecionar");
-                        setHoraAlarme(null);
-                        setDiasSelecionados([]);
+                        resetForm();
+                        router.back();
                     },
                 },
             ],

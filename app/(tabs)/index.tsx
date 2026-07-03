@@ -4,6 +4,7 @@ import React, { useCallback, useState } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 
 import GroupList from "@/components/Groups/GroupList";
+import AllTasks from "@/components/Home/AllTasks";
 import ParallaxScrollView from "@/components/parallax-scroll-view";
 import { ThemedText } from "@/components/themed-text";
 import Days from "../../components/Home/Days";
@@ -47,9 +48,13 @@ export default function HomeScreen() {
                 <GroupList home={true} groups={groups} />
 
                 <View style={styles.sectionHeader}>
+                    <ThemedText style={styles.sectionTitle}>TAREFAS</ThemedText>
+                </View>
+                <AllTasks />
+
+                <View style={styles.sectionHeader}>
                     <ThemedText style={styles.sectionTitle}>DIAS</ThemedText>
                 </View>
-
                 <Days />
             </View>
         </ParallaxScrollView>
@@ -64,8 +69,8 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
-        marginBottom: 10,
-        marginTop: 10,
+        // marginBottom: 5,
+        marginTop: 5,
     },
     sectionTitle: {
         color: "#FFF",

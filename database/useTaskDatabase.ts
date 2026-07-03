@@ -90,6 +90,27 @@ export function useTaskDatabase() {
         }
     }
 
+    async function removeSpecificDay(tarefaId: number, diaSemana: number) {
+        try {
+            await db.runAsync(
+                "DELETE FROM tarefa_dias WHERE tarefa_id = ? AND dia_semana = ?",
+                [tarefaId, diaSemana],
+            );
+
+            // Opcional: Se a tarefa não tiver mais nenhum dia vinculado, você pode excluí-la totalmente
+            const remainingDays = await db.getAllAsync(
+                "SELECT * FROM tarefa_dias WHERE tarefa_id = ?",
+                [tarefaId],
+            );
+            if (remainingDays.length === 0) {
+                await remove(tarefaId); // Chama sua função já existente de remover a tarefa toda
+            }
+        } catch (error) {
+            console.error("Erro ao remover dia da tarefa:", error);
+            throw error;
+        }
+    }
+
     async function toggleConcluida(id: number, atualStatus: number) {
         const novoStatus = atualStatus === 0 ? 1 : 0;
         await db.runAsync("UPDATE tarefas SET concluida = ? WHERE id = ?", [
@@ -99,6 +120,29 @@ export function useTaskDatabase() {
     }
 
     async function getTasksByDay(diaId: number) {
+        // 1. Descobrir qual o índice real do dia da semana hoje e amanhã
+        const hojeReal = new Date().getDay(); // 0 a 6
+        const amanhaReal = (hojeReal + 1) % 7;
+
+        // 2. Criar uma lista de IDs para buscar
+        // Sempre buscamos o ID do dia (0-6)
+        const idsParaBuscar = [diaId];
+
+        // Se o dia que a tela quer carregar for o dia de HOJE real,
+        // incluímos também o marcador de tarefa temporária de hoje
+        if (diaId === hojeReal) {
+            idsParaBuscar.push(DAY_HOJE); // Geralmente -1
+        }
+
+        // Se o dia que a tela quer carregar for o dia de AMANHÃ real,
+        // incluímos também o marcador de tarefa temporária de amanhã
+        if (diaId === amanhaReal) {
+            idsParaBuscar.push(DAY_AMANHA); // Geralmente -2
+        }
+
+        // 3. Criar os placeholders (?, ?, ?) para o IN do SQL
+        const placeholders = idsParaBuscar.map(() => "?").join(",");
+
         return await db.getAllAsync<{
             id: number;
             nome: string;
@@ -109,14 +153,14 @@ export function useTaskDatabase() {
             grupo_cor: string;
         }>(
             `
-        SELECT t.*, g.nome as grupo_nome, g.cor as grupo_cor
+        SELECT DISTINCT t.*, g.nome as grupo_nome, g.cor as grupo_cor
         FROM tarefas t
         INNER JOIN grupos g ON t.grupo_id = g.id
         INNER JOIN tarefa_dias td ON t.id = td.tarefa_id
-        WHERE td.dia_semana = ?
+        WHERE td.dia_semana IN (${placeholders})
         ORDER BY t.alarme_hora ASC
-    `,
-            [diaId],
+        `,
+            idsParaBuscar,
         );
     }
 
@@ -180,48 +224,75 @@ export function useTaskDatabase() {
     // Dentro do useTaskDatabase
     async function cleanupTemporaryTasks() {
         try {
-            // 1. Pega a hora atual no formato HH:mm
+            // 1. Pega a hora atual no formato HH:mm (ex: "14:30")
             const agora = new Date();
             const horaAtual = `${agora.getHours().toString().padStart(2, "0")}:${agora.getMinutes().toString().padStart(2, "0")}`;
 
-            await db.withTransactionAsync(async () => {
-                // DELETAR HOJE: Se a tarefa foi criada hoje e o grupo já acabou OU se foi criada antes de hoje
-                await db.runAsync(
-                    `
-                DELETE FROM tarefas 
-                WHERE id IN (
-                    SELECT t.id FROM tarefas t
-                    INNER JOIN tarefa_dias td ON t.id = td.tarefa_id
-                    INNER JOIN grupos g ON t.grupo_id = g.id
-                    WHERE td.dia_semana = ? 
-                    AND (date(t.criada_em) < date('now', 'localtime') 
-                         OR (date(t.criada_em) = date('now', 'localtime') AND g.hora_fim < ?))
-                )
-            `,
-                    [DAY_HOJE, horaAtual],
-                );
+            // Definir os valores caso não venham de fora (ajuste conforme suas constantes)
+            const DH = -1; // DAY_HOJE
+            const DA = -2; // DAY_AMANHA
 
-                // DELETAR AMANHÃ: Se a tarefa foi criada há mais de 1 dia (já passou o "amanhã")
-                // OU se foi criada ontem e o horário do grupo já acabou
-                await db.runAsync(
-                    `
-                DELETE FROM tarefas 
-                WHERE id IN (
-                    SELECT t.id FROM tarefas t
-                    INNER JOIN tarefa_dias td ON t.id = td.tarefa_id
-                    INNER JOIN grupos g ON t.grupo_id = g.id
-                    WHERE td.dia_semana = ? 
-                    AND (date(t.criada_em) < date('now', 'localtime', '-1 day') 
-                         OR (date(t.criada_em) = date('now', 'localtime', '-1 day') AND g.hora_fim < ?))
+            console.log("Iniciando limpeza. Hora atual:", horaAtual);
+
+            // Limpeza HOJE:
+            // Remove se a tarefa é de "hoje" e (foi criada em dias anteriores OU (criada hoje mas o grupo já acabou))
+            await db.runAsync(
+                `DELETE FROM tarefas 
+             WHERE id IN (
+                SELECT t.id FROM tarefas t
+                INNER JOIN tarefa_dias td ON t.id = td.tarefa_id
+                INNER JOIN grupos g ON t.grupo_id = g.id
+                WHERE td.dia_semana = ? 
+                AND (
+                    date(t.criada_em) < date('now', 'localtime') 
+                    OR (date(t.criada_em) = date('now', 'localtime') AND g.hora_fim < ?)
                 )
-            `,
-                    [DAY_AMANHA, horaAtual],
-                );
-            });
-            console.log("Limpeza de tarefas temporárias concluída.");
+             )`,
+                [DH, horaAtual],
+            );
+
+            // Limpeza AMANHÃ:
+            // Remove se a tarefa é de "amanhã" e (foi criada há mais de 1 dia atrás OU (criada ontem mas o grupo já acabou))
+            await db.runAsync(
+                `DELETE FROM tarefas 
+             WHERE id IN (
+                SELECT t.id FROM tarefas t
+                INNER JOIN tarefa_dias td ON t.id = td.tarefa_id
+                INNER JOIN grupos g ON t.grupo_id = g.id
+                WHERE td.dia_semana = ? 
+                AND (
+                    date(t.criada_em) < date('now', 'localtime', '-1 day') 
+                    OR (date(t.criada_em) = date('now', 'localtime', '-1 day') AND g.hora_fim < ?)
+                )
+             )`,
+                [DA, horaAtual],
+            );
+
+            console.log("Limpeza concluída com sucesso.");
         } catch (error) {
-            console.error("Erro na limpeza:", error);
+            // Agora o erro será capturado aqui sem o crash de "cannot rollback"
+            console.error("Erro detalhado na limpeza:", error);
         }
+    }
+
+    async function getAllTasksWithGroups() {
+        // Busca todas as tarefas, grupos e também os dias vinculados
+        const tasks = await db.getAllAsync<any>(`
+        SELECT t.*, g.nome as grupo_nome, g.cor as grupo_cor, g.hora_inicio, g.hora_fim
+        FROM tarefas t
+        INNER JOIN grupos g ON t.grupo_id = g.id
+        ORDER BY g.hora_inicio ASC, t.alarme_hora ASC
+    `);
+
+        // Para cada tarefa, busca os dias dela para montar o texto de "frequência"
+        const results = await Promise.all(
+            tasks.map(async (task) => {
+                const days = await getDaysByTaskId(task.id);
+                return { ...task, dias: days };
+            }),
+        );
+
+        return results;
     }
 
     return {
@@ -229,10 +300,12 @@ export function useTaskDatabase() {
         getAll,
         getDaysByTaskId,
         remove,
+        removeSpecificDay,
         toggleConcluida,
         getTasksByDay,
         getById,
         update,
         cleanupTemporaryTasks,
+        getAllTasksWithGroups,
     };
 }

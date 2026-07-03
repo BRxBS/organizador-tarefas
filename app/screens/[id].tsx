@@ -9,24 +9,22 @@ import {
     View,
 } from "react-native";
 
-import { TaskCard } from "@/components/DayOfTheWeek";
+import { DeleteTaskModal } from "@/components/DayOfTheWeek/DeleteTaskModal";
+import { TaskCard } from "@/components/DayOfTheWeek/TaskCard";
 import ParallaxScrollView from "@/components/parallax-scroll-view";
 import { useTaskDatabase } from "@/database/useTaskDatabase";
 import { DAY_COLORS } from "@/util/colors";
-import { DAYS_DATA } from "@/util/days";
 
 export default function DayOfTheWeekScreen() {
-    const { id, title } = useLocalSearchParams(); // O id do dia (0-6)
     const router = useRouter();
+    const { id, title } = useLocalSearchParams();
     const taskDb = useTaskDatabase();
+    const dayIndex = Number(id);
+    const headerColor = DAY_COLORS[dayIndex] || "#A1CEDC";
 
     const [tasks, setTasks] = useState<any[]>([]);
-
-    // Pegar o nome do dia e a cor baseada no ID
-    const dayIndex = Number(id);
-    const dayName =
-        DAYS_DATA.find((d) => Number(d.id) === dayIndex)?.title || "DIA";
-    const headerColor = DAY_COLORS[dayIndex] || "#A1CEDC";
+    const [modalVisible, setModalVisible] = useState(false);
+    const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
 
     const loadTasks = async () => {
         const data = await taskDb.getTasksByDay(dayIndex);
@@ -36,6 +34,27 @@ export default function DayOfTheWeekScreen() {
     useEffect(() => {
         loadTasks();
     }, [id]);
+
+    const openDeleteModal = (taskId: number) => {
+        setSelectedTaskId(taskId);
+        setModalVisible(true);
+    };
+
+    const handleDeleteDay = async () => {
+        if (selectedTaskId) {
+            await taskDb.removeSpecificDay(selectedTaskId, dayIndex);
+            setModalVisible(false);
+            loadTasks();
+        }
+    };
+
+    const handleDeleteAll = async () => {
+        if (selectedTaskId) {
+            await taskDb.remove(selectedTaskId);
+            setModalVisible(false);
+            loadTasks();
+        }
+    };
 
     return (
         <View style={{ flex: 1 }}>
@@ -51,7 +70,18 @@ export default function DayOfTheWeekScreen() {
                         data={tasks}
                         keyExtractor={(item) => item.id.toString()}
                         scrollEnabled={false} // ParallaxScrollView já tem scroll
-                        renderItem={({ item }) => <TaskCard task={item} />}
+                        renderItem={({ item }) => (
+                            <TaskCard
+                                task={item}
+                                onEdit={(id) =>
+                                    router.push({
+                                        pathname: "/task",
+                                        params: { id },
+                                    })
+                                }
+                                onDelete={openDeleteModal}
+                            />
+                        )}
                         ListEmptyComponent={
                             <Text style={styles.emptyText}>
                                 Nenhuma tarefa para este dia.
@@ -60,6 +90,13 @@ export default function DayOfTheWeekScreen() {
                     />
                 </View>
             </ParallaxScrollView>
+
+            <DeleteTaskModal
+                visible={modalVisible}
+                onClose={() => setModalVisible(false)}
+                onDeleteDay={handleDeleteDay}
+                onDeleteAll={handleDeleteAll}
+            />
 
             {/* Botão Flutuante (FAB) */}
             <TouchableOpacity

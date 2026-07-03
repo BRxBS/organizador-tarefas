@@ -65,5 +65,13 @@ export function useGroupDatabase() {
         }
     }
 
-    return { create, getAll, update, remove };
+    async function countTasksByGroup(groupId: number) {
+        const result = await db.getFirstAsync<{ total: number }>(
+            "SELECT COUNT(*) as total FROM tarefas WHERE grupo_id = ?",
+            [groupId],
+        );
+        return result?.total || 0;
+    }
+
+    return { create, getAll, update, remove, countTasksByGroup };
 }

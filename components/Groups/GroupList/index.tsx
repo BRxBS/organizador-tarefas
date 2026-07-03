@@ -54,7 +54,7 @@ const GroupList = ({ groups, home, onEdit, onDelete }: GroupListProps) => {
 
 const styles = StyleSheet.create({
     container: {
-        marginBottom: 20,
+        marginBottom: 10,
     },
     sectionTitle: {
         color: "#FFF",
@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
         marginBottom: 10,
     },
     scrollWrapper: {
-        height: 200, // ALTURA FIXA: Escolha um valor que caiba bem na tela
+        height: 180, // ALTURA FIXA: Escolha um valor que caiba bem na tela
         backgroundColor: "rgba(255,255,255,0.03)", // Fundo sutil para delimitar a área
         borderRadius: 10,
         padding: 5,
