@@ -1,3 +1,4 @@
+import { updateWidget } from "@/util/updateWidget";
 import { useSQLiteContext } from "expo-sqlite";
 
 export function useGroupDatabase() {
@@ -26,6 +27,7 @@ export function useGroupDatabase() {
             throw error;
         } finally {
             await statement.finalizeAsync();
+            updateWidget();
         }
     }
 
@@ -52,12 +54,14 @@ export function useGroupDatabase() {
             "UPDATE grupos SET nome = ?, hora_inicio = ?, hora_fim = ?, cor = ? WHERE id = ?",
             [data.nome, data.hora_inicio, data.hora_fim, data.cor, id], // O ID deve ser o ÚLTIMO aqui
         );
+        updateWidget();
     }
 
     async function remove(id: number) {
         try {
             // Importante: use o id dentro de um array []
             await db.runAsync("DELETE FROM grupos WHERE id = ?", [id]);
+            updateWidget();
             console.log("Grupo removido do banco, ID:", id);
         } catch (error) {
             console.error("Erro ao remover no banco:", error);
@@ -73,5 +77,23 @@ export function useGroupDatabase() {
         return result?.total || 0;
     }
 
-    return { create, getAll, update, remove, countTasksByGroup };
+    async function updateGroupOrder(
+        orderedGroups: { id: number; ordem: number }[],
+    ) {
+        for (const group of orderedGroups) {
+            await db.runAsync("UPDATE grupos SET ordem = ? WHERE id = ?", [
+                group.ordem,
+                group.id,
+            ]);
+        }
+    }
+
+    return {
+        create,
+        getAll,
+        update,
+        remove,
+        countTasksByGroup,
+        updateGroupOrder,
+    };
 }

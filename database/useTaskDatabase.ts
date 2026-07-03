@@ -1,4 +1,5 @@
 import { DAY_AMANHA, DAY_HOJE } from "@/util/days";
+import { updateWidget } from "@/util/updateWidget";
 import { useSQLiteContext } from "expo-sqlite";
 
 export type TaskDatabase = {
@@ -53,6 +54,7 @@ export function useTaskDatabase() {
 
             // 5. Agora retornamos o ID para quem chamou a função create
             console.log("Tarefa e dias salvos com sucesso! ID:", insertedId);
+            updateWidget();
             return insertedId;
         } catch (error) {
             console.error("Erro ao criar tarefa:", error);
@@ -83,6 +85,7 @@ export function useTaskDatabase() {
             // Graças ao ON DELETE CASCADE no seu schema,
             // ao deletar a tarefa, os registros em tarefa_dias somem sozinhos.
             await db.runAsync("DELETE FROM tarefas WHERE id = ?", [id]);
+            updateWidget();
             console.log("Tarefa removida com sucesso");
         } catch (error) {
             console.error("Erro ao remover tarefa:", error);
@@ -105,18 +108,11 @@ export function useTaskDatabase() {
             if (remainingDays.length === 0) {
                 await remove(tarefaId); // Chama sua função já existente de remover a tarefa toda
             }
+            updateWidget();
         } catch (error) {
             console.error("Erro ao remover dia da tarefa:", error);
             throw error;
         }
-    }
-
-    async function toggleConcluida(id: number, atualStatus: number) {
-        const novoStatus = atualStatus === 0 ? 1 : 0;
-        await db.runAsync("UPDATE tarefas SET concluida = ? WHERE id = ?", [
-            novoStatus,
-            id,
-        ]);
     }
 
     async function getTasksByDay(diaId: number) {
@@ -215,6 +211,7 @@ export function useTaskDatabase() {
                     );
                 }
             });
+            updateWidget();
         } catch (error) {
             console.error("Erro ao atualizar tarefa:", error);
             throw error;
@@ -267,7 +264,7 @@ export function useTaskDatabase() {
              )`,
                 [DA, horaAtual],
             );
-
+            updateWidget();
             console.log("Limpeza concluída com sucesso.");
         } catch (error) {
             // Agora o erro será capturado aqui sem o crash de "cannot rollback"
@@ -295,17 +292,28 @@ export function useTaskDatabase() {
         return results;
     }
 
+    async function updateGroupOrder(
+        orderedGroups: { id: number; ordem: number }[],
+    ) {
+        for (const group of orderedGroups) {
+            await db.runAsync("UPDATE grupos SET ordem = ? WHERE id = ?", [
+                group.ordem,
+                group.id,
+            ]);
+        }
+    }
+
     return {
         create,
         getAll,
         getDaysByTaskId,
         remove,
         removeSpecificDay,
-        toggleConcluida,
         getTasksByDay,
         getById,
         update,
         cleanupTemporaryTasks,
         getAllTasksWithGroups,
+        updateGroupOrder,
     };
 }

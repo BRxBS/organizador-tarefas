@@ -3,6 +3,7 @@ import { type SQLiteDatabase } from "expo-sqlite";
 export async function initializeDatabase(db: SQLiteDatabase) {
     try {
         // Ativa o suporte a chaves estrangeiras (Foreign Keys)
+        await db.execAsync(`PRAGMA journal_mode = WAL;`);
         await db.execAsync(`PRAGMA foreign_keys = ON;`);
 
         await db.execAsync(`
@@ -12,7 +13,8 @@ export async function initializeDatabase(db: SQLiteDatabase) {
                 nome TEXT NOT NULL,
                 hora_inicio TEXT NOT NULL,
                 hora_fim TEXT NOT NULL,
-                cor TEXT NOT NULL
+                cor TEXT NOT NULL,
+                ordem INTEGER DEFAULT 0
             );
 
             -- Tabela de Tarefas
@@ -24,6 +26,7 @@ export async function initializeDatabase(db: SQLiteDatabase) {
                 alarme_hora TEXT,
                 concluida INTEGER DEFAULT 0, -- 0 = false, 1 = true
                 criada_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+                ordem INTEGER DEFAULT 0 -- Nova Coluna,
                 FOREIGN KEY (grupo_id) REFERENCES grupos (id) ON DELETE CASCADE
             );
 
@@ -34,9 +37,21 @@ export async function initializeDatabase(db: SQLiteDatabase) {
                 PRIMARY KEY (tarefa_id, dia_semana),
                 FOREIGN KEY (tarefa_id) REFERENCES tarefas (id) ON DELETE CASCADE
             );
+
+            -- Tabela de check-in de tarefas (N:N) - Sessões de Check-in
+            CREATE TABLE IF NOT EXISTS tarefa_check_sessao (
+                tarefa_id INTEGER NOT NULL,
+                grupo_id INTEGER NOT NULL,
+                data TEXT NOT NULL, -- formato YYYY-MM-DD (o dia em que foi marcada)
+                PRIMARY KEY (tarefa_id, grupo_id, data),
+                FOREIGN KEY (tarefa_id) REFERENCES tarefas(id) ON DELETE CASCADE,
+                FOREIGN KEY (grupo_id) REFERENCES grupos(id) ON DELETE CASCADE
+            );
         `);
 
         console.log("Banco de dados e tabelas sincronizados com sucesso!");
+        // No seu componente principal ou no init do banco
+        console.log("Caminho do banco:", db.databasePath);
     } catch (error) {
         console.log("Erro ao inicializar banco de dados:", error);
     }
