@@ -116,30 +116,16 @@ export function useTaskDatabase() {
     }
 
     async function getTasksByDay(diaId: number) {
-        // 1. Descobrir qual o índice real do dia da semana hoje e amanhã
-        const hojeReal = new Date().getDay(); // 0 a 6
+        const hojeReal = new Date().getDay();
         const amanhaReal = (hojeReal + 1) % 7;
 
-        // 2. Criar uma lista de IDs para buscar
-        // Sempre buscamos o ID do dia (0-6)
         const idsParaBuscar = [diaId];
+        if (diaId === hojeReal) idsParaBuscar.push(DAY_HOJE);
+        if (diaId === amanhaReal) idsParaBuscar.push(DAY_AMANHA);
 
-        // Se o dia que a tela quer carregar for o dia de HOJE real,
-        // incluímos também o marcador de tarefa temporária de hoje
-        if (diaId === hojeReal) {
-            idsParaBuscar.push(DAY_HOJE); // Geralmente -1
-        }
-
-        // Se o dia que a tela quer carregar for o dia de AMANHÃ real,
-        // incluímos também o marcador de tarefa temporária de amanhã
-        if (diaId === amanhaReal) {
-            idsParaBuscar.push(DAY_AMANHA); // Geralmente -2
-        }
-
-        // 3. Criar os placeholders (?, ?, ?) para o IN do SQL
         const placeholders = idsParaBuscar.map(() => "?").join(",");
 
-        return await db.getAllAsync<{
+        const tasks = await db.getAllAsync<{
             id: number;
             nome: string;
             descricao: string | null;
@@ -149,15 +135,25 @@ export function useTaskDatabase() {
             grupo_cor: string;
         }>(
             `
-        SELECT DISTINCT t.*, g.nome as grupo_nome, g.cor as grupo_cor
+        SELECT DISTINCT t.id, t.nome, t.descricao, t.alarme_hora, t.concluida,
+               g.nome as grupo_nome, g.cor as grupo_cor
         FROM tarefas t
         INNER JOIN grupos g ON t.grupo_id = g.id
         INNER JOIN tarefa_dias td ON t.id = td.tarefa_id
         WHERE td.dia_semana IN (${placeholders})
-        ORDER BY t.alarme_hora ASC
         `,
             idsParaBuscar,
         );
+
+        // Ordena usando a ordem efetiva do dia específico sendo visualizado (diaId)
+        const withOrder = await Promise.all(
+            tasks.map(async (task) => ({
+                ...task,
+                _ordem: await getTaskOrderForDay(task.id, diaId),
+            })),
+        );
+
+        return withOrder.sort((a, b) => a._ordem - b._ordem);
     }
 
     async function getById(id: number) {
@@ -273,15 +269,13 @@ export function useTaskDatabase() {
     }
 
     async function getAllTasksWithGroups() {
-        // Busca todas as tarefas, grupos e também os dias vinculados
         const tasks = await db.getAllAsync<any>(`
         SELECT t.*, g.nome as grupo_nome, g.cor as grupo_cor, g.hora_inicio, g.hora_fim
         FROM tarefas t
         INNER JOIN grupos g ON t.grupo_id = g.id
-        ORDER BY g.hora_inicio ASC, t.alarme_hora ASC
+        ORDER BY g.hora_inicio ASC, t.ordem ASC
     `);
 
-        // Para cada tarefa, busca os dias dela para montar o texto de "frequência"
         const results = await Promise.all(
             tasks.map(async (task) => {
                 const days = await getDaysByTaskId(task.id);
@@ -292,15 +286,62 @@ export function useTaskDatabase() {
         return results;
     }
 
-    async function updateGroupOrder(
-        orderedGroups: { id: number; ordem: number }[],
+    // Ordem GLOBAL (usada pelo AllTasksScreen — aplica pra todos os dias)
+    async function updateTaskOrder(
+        orderedTasks: { id: number; ordem: number }[],
     ) {
-        for (const group of orderedGroups) {
-            await db.runAsync("UPDATE grupos SET ordem = ? WHERE id = ?", [
-                group.ordem,
-                group.id,
-            ]);
+        try {
+            for (const task of orderedTasks) {
+                await db.runAsync("UPDATE tarefas SET ordem = ? WHERE id = ?", [
+                    task.ordem,
+                    task.id,
+                ]);
+                // Limpa qualquer ordem específica de dia, já que agora
+                // a ordem global deve valer em todos os dias
+                await db.runAsync(
+                    "UPDATE tarefa_dias SET ordem = NULL WHERE tarefa_id = ?",
+                    [task.id],
+                );
+            }
+            updateWidget();
+        } catch (error) {
+            throw error;
         }
+    }
+
+    // Ordem ESPECÍFICA de um dia (usada pelo DayOfTheWeekScreen quando o usuário escolhe "somente este dia")
+    async function updateTaskOrderForDay(
+        diaSemana: number,
+        orderedTasks: { id: number; ordem: number }[],
+    ) {
+        try {
+            for (const task of orderedTasks) {
+                await db.runAsync(
+                    "UPDATE tarefa_dias SET ordem = ? WHERE tarefa_id = ? AND dia_semana = ?",
+                    [task.ordem, task.id, diaSemana],
+                );
+            }
+            updateWidget();
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    // Busca a ordem efetiva de uma tarefa num dia específico
+    // (usa a ordem do dia se existir, senão cai pra ordem global)
+    async function getTaskOrderForDay(tarefaId: number, diaSemana: number) {
+        const dayRow = await db.getFirstAsync<{ ordem: number | null }>(
+            "SELECT ordem FROM tarefa_dias WHERE tarefa_id = ? AND dia_semana = ?",
+            [tarefaId, diaSemana],
+        );
+        if (dayRow?.ordem !== null && dayRow?.ordem !== undefined) {
+            return dayRow.ordem;
+        }
+        const globalRow = await db.getFirstAsync<{ ordem: number }>(
+            "SELECT ordem FROM tarefas WHERE id = ?",
+            [tarefaId],
+        );
+        return globalRow?.ordem ?? 0;
     }
 
     return {
@@ -314,6 +355,8 @@ export function useTaskDatabase() {
         update,
         cleanupTemporaryTasks,
         getAllTasksWithGroups,
-        updateGroupOrder,
+        updateTaskOrder,
+        updateTaskOrderForDay,
+        getTaskOrderForDay,
     };
 }

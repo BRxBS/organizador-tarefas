@@ -1,29 +1,54 @@
+import React, { useEffect, useState } from "react";
+import { Alert, StyleSheet, Text, View } from "react-native";
+import {
+    NestableDraggableFlatList,
+    NestableScrollContainer,
+    ScaleDecorator,
+} from "react-native-draggable-flatlist";
+
+import { TouchableOpacity } from "react-native-gesture-handler";
+
 import TaskItem from "@/components/TaskItem";
 import { useTaskDatabase } from "@/database/useTaskDatabase";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import React, { useEffect, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
-// Importe seus hooks e componentes de modal aqui
+
+type TaskWithGroup = {
+    id: number;
+    nome: string;
+    descricao: string | null;
+    grupo_id: number;
+    alarme_hora: string | null;
+    concluida: number;
+    grupo_nome: string;
+    grupo_cor: string;
+    hora_inicio: string;
+    hora_fim: string;
+    ordem: number;
+    dias: number[];
+};
+
+type TaskGroup = {
+    grupo_id: number;
+    nome: string;
+    cor: string;
+    horario: string;
+    tasks: TaskWithGroup[];
+};
 
 export default function AllTasksScreen() {
     const taskDb = useTaskDatabase();
-    const [allTasks, setAllTasks] = useState<any[]>([]);
+    const [taskGroups, setTaskGroups] = useState<TaskGroup[]>([]);
 
     const loadData = async () => {
         const data = await taskDb.getAllTasksWithGroups();
-        setAllTasks(data);
-    };
 
-    useEffect(() => {
-        loadData();
-    }, []);
-
-    // Agrupa as tarefas por Grupo
-    const groupedData = useMemo(() => {
-        const groups: any = {};
-        allTasks.forEach((task) => {
+        // Mesma lógica de agrupamento que você já tinha no useMemo,
+        // só que agora alimenta um state (pra podermos reordenar)
+        const groups: Record<number, TaskGroup> = {};
+        data.forEach((task: TaskWithGroup) => {
             if (!groups[task.grupo_id]) {
                 groups[task.grupo_id] = {
+                    grupo_id: task.grupo_id,
                     nome: task.grupo_nome,
                     cor: task.grupo_cor,
                     horario: `${task.hora_inicio} ATÉ ${task.hora_fim}`,
@@ -32,8 +57,40 @@ export default function AllTasksScreen() {
             }
             groups[task.grupo_id].tasks.push(task);
         });
-        return Object.values(groups);
-    }, [allTasks]);
+
+        setTaskGroups(Object.values(groups));
+    };
+
+    useEffect(() => {
+        loadData();
+    }, []);
+
+    const handleDragEnd = async (
+        groupId: number,
+        newTasks: TaskWithGroup[],
+    ) => {
+        // Atualiza state local só do grupo que mudou (mantém os outros grupos intactos)
+        setTaskGroups((prev) =>
+            prev.map((g) =>
+                g.grupo_id === groupId ? { ...g, tasks: newTasks } : g,
+            ),
+        );
+
+        const formatted = newTasks.map((item, index) => ({
+            id: item.id,
+            ordem: index,
+        }));
+
+        try {
+            await taskDb.updateTaskOrder(formatted); // ordem global, todos os dias
+        } catch (error: any) {
+            Alert.alert(
+                "Erro",
+                "Não foi possível salvar a nova ordem: " + error.message,
+            );
+            loadData(); // reverte pra ordem persistida em caso de erro
+        }
+    };
 
     return (
         <View style={styles.mainContainer}>
@@ -41,10 +98,12 @@ export default function AllTasksScreen() {
                 <Text style={styles.headerTitle}>TAREFAS</Text>
             </View>
 
-            <ScrollView style={styles.content}>
-                {groupedData.map((group: any, idx) => (
-                    <View key={idx} style={styles.groupSection}>
-                        {/* Header do Grupo */}
+            <NestableScrollContainer
+                style={styles.content}
+                contentContainerStyle={{ paddingBottom: 40 }}
+            >
+                {taskGroups.map((group) => (
+                    <View key={group.grupo_id} style={styles.groupSection}>
                         <View style={styles.groupHeader}>
                             <View style={styles.groupHeaderLeft}>
                                 <MaterialCommunityIcons
@@ -61,7 +120,6 @@ export default function AllTasksScreen() {
                             </Text>
                         </View>
 
-                        {/* Container das Tarefas do Grupo */}
                         <View
                             style={[
                                 styles.tasksContainer,
@@ -74,23 +132,74 @@ export default function AllTasksScreen() {
                                     { backgroundColor: group.cor },
                                 ]}
                             />
-                            <ScrollView
-                                nestedScrollEnabled
-                                style={styles.groupScroll}
-                                contentContainerStyle={{ paddingVertical: 10 }}
-                            >
-                                {group.tasks.map((task: any) => (
-                                    <TaskItem
-                                        key={task.id}
-                                        task={task}
-                                        onRefresh={loadData}
-                                    />
-                                ))}
-                            </ScrollView>
+                            {/* <NestableDraggableFlatList<TaskWithGroup>
+                                data={group.tasks}
+                                keyExtractor={(item) => item.id.toString()}
+                                onDragEnd={({ data }) =>
+                                    handleDragEnd(group.grupo_id, data)
+                                }
+                                activationDistance={20}
+                                style={{ flex: 1, width: "100%" }} // 👈 essencial, resolve a largura
+                                contentContainerStyle={{
+                                    paddingVertical: 10,
+                                    flexGrow: 1,
+                                }}
+                                renderItem={({ item, drag, isActive }) => (
+                                    <ScaleDecorator>
+                                        <TouchableOpacity
+                                            onLongPress={drag}
+                                            disabled={isActive}
+                                            activeOpacity={1}
+                                            style={{
+                                                opacity: isActive ? 0.7 : 1,
+                                            }}
+                                        >
+                                            <TaskItem
+                                                task={item}
+                                                onRefresh={loadData}
+                                            />
+                                        </TouchableOpacity>
+                                    </ScaleDecorator>
+                                )}
+                            /> */}
+                            <NestableDraggableFlatList<TaskWithGroup>
+                                data={group.tasks}
+                                keyExtractor={(item) => item.id.toString()}
+                                onDragEnd={({ data }) =>
+                                    handleDragEnd(group.grupo_id, data)
+                                }
+                                activationDistance={20}
+                                style={{ flex: 1 }}
+                                contentContainerStyle={{
+                                    padding: 15, // Espaço interno para os cards não encostarem na borda
+                                }}
+                                // Isso cria o espaçamento entre os cards azuis
+                                ItemSeparatorComponent={() => (
+                                    <View style={{ height: 12 }} />
+                                )}
+                                renderItem={({ item, drag, isActive }) => (
+                                    <ScaleDecorator>
+                                        <TouchableOpacity
+                                            onLongPress={drag}
+                                            disabled={isActive}
+                                            activeOpacity={0.9}
+                                            style={{
+                                                width: "100%",
+                                                opacity: isActive ? 0.7 : 1,
+                                            }}
+                                        >
+                                            <TaskItem
+                                                task={item}
+                                                onRefresh={loadData}
+                                            />
+                                        </TouchableOpacity>
+                                    </ScaleDecorator>
+                                )}
+                            />
                         </View>
                     </View>
                 ))}
-            </ScrollView>
+            </NestableScrollContainer>
         </View>
     );
 }
@@ -119,7 +228,7 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         backgroundColor: "#2A2A2A",
         borderRadius: 15,
-        height: 250, // Altura para caber aprox 3 tarefas e permitir scroll
+        // height: 250, // Altura para caber aprox 3 tarefas e permitir scroll
         overflow: "hidden",
         borderWidth: 1,
         borderColor: "#444",

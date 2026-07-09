@@ -14,6 +14,7 @@ import { initializeDatabase } from "../database/initializeDatabase";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Suspense, useEffect } from "react";
 import { ActivityIndicator, Platform } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 export const unstable_settings = {
     anchor: "(tabs)",
@@ -36,37 +37,39 @@ export default function RootLayout() {
     }, []);
 
     return (
-        <ThemeProvider
-            value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
-        >
-            <SQLiteProvider
-                databaseName="database.db"
-                onInit={initializeDatabase}
+        <GestureHandlerRootView style={{ flex: 1 }}>
+            <ThemeProvider
+                value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
             >
-                <Suspense fallback={<ActivityIndicator size="large" />}>
-                    <Stack>
-                        <Stack.Screen
-                            name="(tabs)"
-                            options={{ headerShown: false }}
-                        />
-                        <Stack.Screen
-                            name="screens/[id]"
-                            options={{
-                                headerShown: false, // Recomendado esconder o header padrão já que você usa o Parallax
-                                title: "Detalhes do Dia",
-                            }}
-                        />
-                        <Stack.Screen
-                            name="screens/all-tasks"
-                            options={{
-                                headerShown: false, // Recomendado esconder o header padrão já que você usa o Parallax
-                                title: "Todas as tarefas",
-                            }}
-                        />
-                    </Stack>
-                </Suspense>
-                <StatusBar style="auto" />
-            </SQLiteProvider>
-        </ThemeProvider>
+                <SQLiteProvider
+                    databaseName="database.db"
+                    onInit={initializeDatabase}
+                >
+                    <Suspense fallback={<ActivityIndicator size="large" />}>
+                        <Stack>
+                            <Stack.Screen
+                                name="(tabs)"
+                                options={{ headerShown: false }}
+                            />
+                            <Stack.Screen
+                                name="screens/[id]"
+                                options={{
+                                    headerShown: false, // Recomendado esconder o header padrão já que você usa o Parallax
+                                    title: "Detalhes do Dia",
+                                }}
+                            />
+                            <Stack.Screen
+                                name="screens/all-tasks"
+                                options={{
+                                    headerShown: false, // Recomendado esconder o header padrão já que você usa o Parallax
+                                    title: "Todas as tarefas",
+                                }}
+                            />
+                        </Stack>
+                    </Suspense>
+                    <StatusBar style="auto" />
+                </SQLiteProvider>
+            </ThemeProvider>
+        </GestureHandlerRootView>
     );
 }

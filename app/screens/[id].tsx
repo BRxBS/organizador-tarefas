@@ -1,19 +1,16 @@
 import { FontAwesome6 } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import {
-    FlatList,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-} from "react-native";
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { DeleteTaskModal } from "@/components/DayOfTheWeek/DeleteTaskModal";
 import { TaskCard } from "@/components/DayOfTheWeek/TaskCard";
 import ParallaxScrollView from "@/components/parallax-scroll-view";
 import { useTaskDatabase } from "@/database/useTaskDatabase";
 import { DAY_COLORS } from "@/util/colors";
+import DraggableFlatList, {
+    ScaleDecorator,
+} from "react-native-draggable-flatlist";
 
 export default function DayOfTheWeekScreen() {
     const router = useRouter();
@@ -56,6 +53,54 @@ export default function DayOfTheWeekScreen() {
         }
     };
 
+    const handleDragEnd = (newData: any[]) => {
+        setTasks(newData); // atualiza visualmente de imediato
+
+        const formatted = newData.map((item, index) => ({
+            id: item.id,
+            ordem: index,
+        }));
+
+        Alert.alert(
+            "Reordenar tarefas",
+            "Você quer aplicar essa nova ordem só para este dia ou para todos os dias em que essa tarefa aparece?",
+            [
+                {
+                    text: "Somente este dia",
+                    onPress: () => saveOrder(formatted, "dia"),
+                },
+                {
+                    text: "Todos os dias",
+                    onPress: () => saveOrder(formatted, "todos"),
+                },
+                {
+                    text: "Cancelar",
+                    style: "cancel",
+                    onPress: () => loadTasks(), // reverte a UI pra ordem salva
+                },
+            ],
+        );
+    };
+
+    const saveOrder = async (
+        formatted: { id: number; ordem: number }[],
+        escopo: "dia" | "todos",
+    ) => {
+        try {
+            if (escopo === "dia") {
+                await taskDb.updateTaskOrderForDay(dayIndex, formatted);
+            } else {
+                await taskDb.updateTaskOrder(formatted);
+            }
+        } catch (error: any) {
+            Alert.alert(
+                "Erro",
+                "Não foi possível salvar a nova ordem: " + error.message,
+            );
+            loadTasks();
+        }
+    };
+
     return (
         <View style={{ flex: 1 }}>
             <ParallaxScrollView
@@ -66,21 +111,32 @@ export default function DayOfTheWeekScreen() {
                 title={title as string}
             >
                 <View style={styles.listContainer}>
-                    <FlatList
+                    <DraggableFlatList
                         data={tasks}
                         keyExtractor={(item) => item.id.toString()}
-                        scrollEnabled={false} // ParallaxScrollView já tem scroll
-                        renderItem={({ item }) => (
-                            <TaskCard
-                                task={item}
-                                onEdit={(id) =>
-                                    router.push({
-                                        pathname: "/task",
-                                        params: { id },
-                                    })
-                                }
-                                onDelete={openDeleteModal}
-                            />
+                        onDragEnd={({ data }) => handleDragEnd(data)}
+                        scrollEnabled={false}
+                        activationDistance={20}
+                        renderItem={({ item, drag, isActive }) => (
+                            <ScaleDecorator>
+                                <TouchableOpacity
+                                    onLongPress={drag}
+                                    disabled={isActive}
+                                    activeOpacity={1}
+                                    style={{ opacity: isActive ? 0.7 : 1 }}
+                                >
+                                    <TaskCard
+                                        task={item}
+                                        onEdit={(id) =>
+                                            router.push({
+                                                pathname: "/task",
+                                                params: { id },
+                                            })
+                                        }
+                                        onDelete={openDeleteModal}
+                                    />
+                                </TouchableOpacity>
+                            </ScaleDecorator>
                         )}
                         ListEmptyComponent={
                             <Text style={styles.emptyText}>

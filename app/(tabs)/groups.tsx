@@ -107,6 +107,21 @@ export default function GroupsScreen() {
         }
     };
 
+    // Dentro de GroupsScreen
+    const handleDragEnd = async (newData: any[]) => {
+        setGroups(newData);
+        const formattedData = newData.map((item, index) => ({
+            id: item.id,
+            ordem: index,
+        }));
+
+        try {
+            await groupDb.updateOrder(formattedData);
+        } catch (error: any) {
+            // Altere para isso para ver o motivo real (ex: "no such column: ordem")
+            Alert.alert("Erro", "Detalhes: " + error.message);
+        }
+    };
     return (
         <ParallaxScrollView
             headerBackgroundColor={{ light: "#2B306E", dark: "#2B306E" }}
@@ -119,6 +134,7 @@ export default function GroupsScreen() {
                     groups={groups}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
+                    onDragEnd={handleDragEnd}
                 />
 
                 <GroupForm

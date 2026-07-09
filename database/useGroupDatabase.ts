@@ -38,9 +38,9 @@ export function useGroupDatabase() {
             hora_inicio: string;
             hora_fim: string;
             cor: string;
-        }>("SELECT * FROM grupos");
+            ordem: number;
+        }>("SELECT * FROM grupos ORDER BY ordem ASC");
     }
-
     async function update(
         id: number,
         data: {
@@ -77,14 +77,17 @@ export function useGroupDatabase() {
         return result?.total || 0;
     }
 
-    async function updateGroupOrder(
-        orderedGroups: { id: number; ordem: number }[],
-    ) {
-        for (const group of orderedGroups) {
-            await db.runAsync("UPDATE grupos SET ordem = ? WHERE id = ?", [
-                group.ordem,
-                group.id,
-            ]);
+    async function updateOrder(orderedGroups: { id: number; ordem: number }[]) {
+        try {
+            for (const group of orderedGroups) {
+                await db.runAsync("UPDATE grupos SET ordem = ? WHERE id = ?", [
+                    group.ordem,
+                    group.id,
+                ]);
+            }
+            updateWidget();
+        } catch (error) {
+            throw error;
         }
     }
 
@@ -94,6 +97,6 @@ export function useGroupDatabase() {
         update,
         remove,
         countTasksByGroup,
-        updateGroupOrder,
+        updateOrder,
     };
 }

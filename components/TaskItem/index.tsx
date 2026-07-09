@@ -115,6 +115,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.3,
         shadowRadius: 3,
+        width: "100%",
     },
     cardRow: {
         flexDirection: "row",
