@@ -1,12 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
-import {
-    NestableDraggableFlatList,
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import DraggableFlatList, {
     NestableScrollContainer,
     ScaleDecorator,
 } from "react-native-draggable-flatlist";
-
-import { TouchableOpacity } from "react-native-gesture-handler";
 
 import TaskItem from "@/components/TaskItem";
 import { useTaskDatabase } from "@/database/useTaskDatabase";
@@ -132,44 +129,15 @@ export default function AllTasksScreen() {
                                     { backgroundColor: group.cor },
                                 ]}
                             />
-                            {/* <NestableDraggableFlatList<TaskWithGroup>
+
+                            <DraggableFlatList<TaskWithGroup>
                                 data={group.tasks}
                                 keyExtractor={(item) => item.id.toString()}
                                 onDragEnd={({ data }) =>
                                     handleDragEnd(group.grupo_id, data)
                                 }
                                 activationDistance={20}
-                                style={{ flex: 1, width: "100%" }} // 👈 essencial, resolve a largura
-                                contentContainerStyle={{
-                                    paddingVertical: 10,
-                                    flexGrow: 1,
-                                }}
-                                renderItem={({ item, drag, isActive }) => (
-                                    <ScaleDecorator>
-                                        <TouchableOpacity
-                                            onLongPress={drag}
-                                            disabled={isActive}
-                                            activeOpacity={1}
-                                            style={{
-                                                opacity: isActive ? 0.7 : 1,
-                                            }}
-                                        >
-                                            <TaskItem
-                                                task={item}
-                                                onRefresh={loadData}
-                                            />
-                                        </TouchableOpacity>
-                                    </ScaleDecorator>
-                                )}
-                            /> */}
-                            <NestableDraggableFlatList<TaskWithGroup>
-                                data={group.tasks}
-                                keyExtractor={(item) => item.id.toString()}
-                                onDragEnd={({ data }) =>
-                                    handleDragEnd(group.grupo_id, data)
-                                }
-                                activationDistance={20}
-                                style={{ flex: 1 }}
+                                style={{ flex: 1, width: "150%" }}
                                 contentContainerStyle={{
                                     padding: 15, // Espaço interno para os cards não encostarem na borda
                                 }}
@@ -228,10 +196,11 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         backgroundColor: "#2A2A2A",
         borderRadius: 15,
-        // height: 250, // Altura para caber aprox 3 tarefas e permitir scroll
+        height: 250, // Altura para caber aprox 3 tarefas e permitir scroll
         overflow: "hidden",
         borderWidth: 1,
         borderColor: "#444",
+        width: "100%",
     },
     sideBar: { width: 20, height: "100%" },
     groupScroll: { flex: 1, paddingHorizontal: 15 },

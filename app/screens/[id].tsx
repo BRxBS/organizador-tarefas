@@ -1,6 +1,6 @@
 import { FontAwesome6 } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { DeleteTaskModal } from "@/components/DayOfTheWeek/DeleteTaskModal";
@@ -12,6 +12,25 @@ import DraggableFlatList, {
     ScaleDecorator,
 } from "react-native-draggable-flatlist";
 
+type TaskWithGroup = {
+    id: number;
+    nome: string;
+    descricao: string | null;
+    alarme_hora: string | null;
+    concluida: number;
+    grupo_id: number;
+    grupo_nome: string;
+    grupo_cor: string;
+    _ordem: number; // ordem efetiva pro dia sendo visualizado
+};
+
+type DayGroup = {
+    grupo_id: number;
+    grupo_nome: string;
+    grupo_cor: string;
+    tasks: TaskWithGroup[];
+};
+
 export default function DayOfTheWeekScreen() {
     const router = useRouter();
     const { id, title } = useLocalSearchParams();
@@ -19,7 +38,7 @@ export default function DayOfTheWeekScreen() {
     const dayIndex = Number(id);
     const headerColor = DAY_COLORS[dayIndex] || "#A1CEDC";
 
-    const [tasks, setTasks] = useState<any[]>([]);
+    const [tasks, setTasks] = useState<TaskWithGroup[]>([]);
     const [modalVisible, setModalVisible] = useState(false);
     const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
 
@@ -53,10 +72,31 @@ export default function DayOfTheWeekScreen() {
         }
     };
 
-    const handleDragEnd = (newData: any[]) => {
-        setTasks(newData); // atualiza visualmente de imediato
+    // Agrupa mantendo a ordem que já vem ordenada do banco (por _ordem)
+    const dayGroups = useMemo<DayGroup[]>(() => {
+        const map = new Map<number, DayGroup>();
+        for (const task of tasks) {
+            if (!map.has(task.grupo_id)) {
+                map.set(task.grupo_id, {
+                    grupo_id: task.grupo_id,
+                    grupo_nome: task.grupo_nome,
+                    grupo_cor: task.grupo_cor,
+                    tasks: [],
+                });
+            }
+            map.get(task.grupo_id)!.tasks.push(task);
+        }
+        return Array.from(map.values());
+    }, [tasks]);
 
-        const formatted = newData.map((item, index) => ({
+    const handleDragEnd = (groupId: number, newGroupTasks: TaskWithGroup[]) => {
+        // Atualiza state local só do grupo que mudou, preservando os demais
+        setTasks((prev) => {
+            const others = prev.filter((t) => t.grupo_id !== groupId);
+            return [...others, ...newGroupTasks];
+        });
+
+        const formatted = newGroupTasks.map((item, index) => ({
             id: item.id,
             ordem: index,
         }));
@@ -76,7 +116,7 @@ export default function DayOfTheWeekScreen() {
                 {
                     text: "Cancelar",
                     style: "cancel",
-                    onPress: () => loadTasks(), // reverte a UI pra ordem salva
+                    onPress: () => loadTasks(),
                 },
             ],
         );
@@ -110,7 +150,63 @@ export default function DayOfTheWeekScreen() {
                 }}
                 title={title as string}
             >
-                <View style={styles.listContainer}>
+                {dayGroups.length === 0 && (
+                    <Text style={styles.emptyText}>
+                        Nenhuma tarefa para este dia.
+                    </Text>
+                )}
+
+                {dayGroups.map((group) => (
+                    <View key={group.grupo_id} style={styles.groupSection}>
+                        {/* <View style={styles.groupHeader}>
+                            <Text style={styles.groupName}>
+                                {group.grupo_nome.toUpperCase()}
+                            </Text>
+                        </View> */}
+
+                        <View
+                            style={[
+                                styles.tasksContainer,
+                                { borderColor: group.grupo_cor },
+                            ]}
+                        >
+                            <DraggableFlatList<TaskWithGroup>
+                                data={group.tasks}
+                                keyExtractor={(item) => item.id.toString()}
+                                onDragEnd={({ data }) =>
+                                    handleDragEnd(group.grupo_id, data)
+                                }
+                                scrollEnabled={false}
+                                activationDistance={20}
+                                renderItem={({ item, drag, isActive }) => (
+                                    <ScaleDecorator>
+                                        <TouchableOpacity
+                                            onLongPress={drag}
+                                            disabled={isActive}
+                                            activeOpacity={1}
+                                            style={{
+                                                opacity: isActive ? 0.7 : 1,
+                                            }}
+                                        >
+                                            <TaskCard
+                                                task={item}
+                                                onEdit={(id) =>
+                                                    router.push({
+                                                        pathname: "/task",
+                                                        params: { id },
+                                                    })
+                                                }
+                                                onDelete={openDeleteModal}
+                                            />
+                                        </TouchableOpacity>
+                                    </ScaleDecorator>
+                                )}
+                            />
+                        </View>
+                    </View>
+                ))}
+
+                {/* <View style={styles.listContainer}>
                     <DraggableFlatList
                         data={tasks}
                         keyExtractor={(item) => item.id.toString()}
@@ -144,7 +240,7 @@ export default function DayOfTheWeekScreen() {
                             </Text>
                         }
                     />
-                </View>
+                </View> */}
             </ParallaxScrollView>
 
             <DeleteTaskModal
@@ -166,6 +262,15 @@ export default function DayOfTheWeekScreen() {
 }
 
 const styles = StyleSheet.create({
+    groupSection: { marginBottom: 20, paddingHorizontal: 0 },
+    groupHeader: { marginBottom: 8 },
+    groupName: { fontSize: 14, fontWeight: "700", color: "#8A9AFA" },
+    tasksContainer: {
+        borderRadius: 15,
+        borderWidth: 1,
+        overflow: "hidden",
+        padding: 10,
+    },
     listContainer: { padding: 20 },
     emptyText: {
         color: "#999",

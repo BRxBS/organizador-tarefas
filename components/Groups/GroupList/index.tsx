@@ -48,9 +48,7 @@ const GroupList = ({
 
     return (
         <View style={styles.container}>
-            <Text style={styles.sectionTitle}>
-                GRUPOS CADASTRADOS (SEGURE PARA REORDENAR)
-            </Text>
+            <Text style={styles.sectionTitle}>GRUPOS CADASTRADOS</Text>
 
             <View style={styles.scrollWrapper}>
                 <DraggableFlatList

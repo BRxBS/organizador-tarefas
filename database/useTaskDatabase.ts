@@ -131,12 +131,13 @@ export function useTaskDatabase() {
             descricao: string | null;
             alarme_hora: string | null;
             concluida: number;
+            grupo_id: number;
             grupo_nome: string;
             grupo_cor: string;
         }>(
             `
-        SELECT DISTINCT t.id, t.nome, t.descricao, t.alarme_hora, t.concluida,
-               g.nome as grupo_nome, g.cor as grupo_cor
+        SELECT DISTINCT t.id, t.nome, t.descricao, t.alarme_hora, t.concluida, t.grupo_id,
+                g.id as grupo_id, g.nome as grupo_nome, g.cor as grupo_cor
         FROM tarefas t
         INNER JOIN grupos g ON t.grupo_id = g.id
         INNER JOIN tarefa_dias td ON t.id = td.tarefa_id
