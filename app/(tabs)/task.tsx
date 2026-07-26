@@ -2,6 +2,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     Alert,
+    NativeModules,
     ScrollView,
     StyleSheet,
     Text,
@@ -13,12 +14,14 @@ import { DaySelector } from "@/components/Task/DaySelector";
 import TemporaryPickerModal from "@/components/Task/TemporaryPickerModal";
 import { useGroupDatabase } from "@/database/useGroupDatabase";
 import { useTaskDatabase } from "@/database/useTaskDatabase";
+import { calcularProximoDisparo } from "@/util/alarme";
 import { DAY_AMANHA, DAY_HOJE } from "@/util/days";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import DayPickerModal from "../../components/Task/DayPickerModal";
 import GroupPickerModal from "../../components/Task/GroupPickerModal";
 import SettingCard from "../../components/Task/Settings";
 import TaskInput from "../../components/Task/TaskInput";
+const { WidgetModule } = NativeModules;
 
 export default function TaskScreen() {
     const { id } = useLocalSearchParams(); // Pega o ID da URL se existir
@@ -155,14 +158,23 @@ export default function TaskScreen() {
         const minutosAgora = agora.getHours() * 60 + agora.getMinutes();
 
         return groups.filter((grupo) => {
-            const minutosFim = timeToMinutes(grupo.hora_fim);
-            return minutosFim > minutosAgora;
+            const minutosInicio = timeToMinutes(grupo.hora_inicio);
+            let minutosFim = timeToMinutes(grupo.hora_fim);
+
+            // Se o fim é <= início, o grupo cruza a meia-noite
+            if (minutosFim <= minutosInicio) {
+                minutosFim += 24 * 60;
+            }
+            console.log("GRUPOS BRUTOS:", JSON.stringify(groups));
+            console.log("HORA AGORA (min):", minutosAgora);
+            return minutosAgora < minutosFim;
         });
     }, [diasSelecionados, groups]);
 
     const formatTime = (date: Date) => {
         return `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")} H`;
     };
+
     const handleSave = async () => {
         if (!isFormValid) return;
         let diasParaSalvar = diasSelecionados;
@@ -179,10 +191,24 @@ export default function TaskScreen() {
                 dias: diasParaSalvar,
             };
 
+            let taskId: number;
             if (isEditing) {
-                await taskDb.update(Number(id), taskData);
+                taskId = Number(id);
+                await taskDb.update(taskId, taskData);
             } else {
-                await taskDb.create(taskData);
+                const novoId = await taskDb.create(taskData);
+
+                if (novoId === null) {
+                    throw new Error("Falha ao criar tarefa: ID não retornado.");
+                }
+
+                taskId = novoId;
+            }
+
+            // Sempre cancela antes de reagendar — cobre edição de horário/dias
+            cancelarTodosAlarmesDaTarefa(taskId);
+            if (horaAlarme) {
+                agendarAlarmesDaTarefa(taskId, horaAlarme, diasParaSalvar);
             }
 
             resetForm();
@@ -226,6 +252,29 @@ export default function TaskScreen() {
             ],
         );
     };
+
+    function cancelarTodosAlarmesDaTarefa(taskId: number) {
+        // Cancela os 7 possíveis (um por dia da semana) — cobre qualquer config anterior
+        for (let dia = 0; dia <= 6; dia++) {
+            WidgetModule.cancelAlarm(taskId * 10 + dia);
+        }
+    }
+
+    function agendarAlarmesDaTarefa(
+        taskId: number,
+        hora: Date,
+        dias: number[],
+    ) {
+        dias.forEach((dia) => {
+            const alarmId = taskId * 10 + dia;
+            const triggerTime = calcularProximoDisparo(
+                dia,
+                hora.getHours(),
+                hora.getMinutes(),
+            );
+            WidgetModule.setExactAlarm(triggerTime, alarmId);
+        });
+    }
 
     return (
         <View style={styles.container}>

@@ -9,6 +9,7 @@ import ParallaxScrollView from "@/components/parallax-scroll-view";
 import { useTaskDatabase } from "@/database/useTaskDatabase";
 import { DAY_COLORS } from "@/util/colors";
 import DraggableFlatList, {
+    NestableScrollContainer,
     ScaleDecorator,
 } from "react-native-draggable-flatlist";
 
@@ -155,56 +156,60 @@ export default function DayOfTheWeekScreen() {
                         Nenhuma tarefa para este dia.
                     </Text>
                 )}
-
-                {dayGroups.map((group) => (
-                    <View key={group.grupo_id} style={styles.groupSection}>
-                        {/* <View style={styles.groupHeader}>
+                <NestableScrollContainer
+                    style={styles.content}
+                    contentContainerStyle={{ paddingBottom: 40 }}
+                >
+                    {dayGroups.map((group) => (
+                        <View key={group.grupo_id} style={styles.groupSection}>
+                            {/* <View style={styles.groupHeader}>
                             <Text style={styles.groupName}>
                                 {group.grupo_nome.toUpperCase()}
                             </Text>
                         </View> */}
 
-                        <View
-                            style={[
-                                styles.tasksContainer,
-                                { borderColor: group.grupo_cor },
-                            ]}
-                        >
-                            <DraggableFlatList<TaskWithGroup>
-                                data={group.tasks}
-                                keyExtractor={(item) => item.id.toString()}
-                                onDragEnd={({ data }) =>
-                                    handleDragEnd(group.grupo_id, data)
-                                }
-                                scrollEnabled={false}
-                                activationDistance={20}
-                                renderItem={({ item, drag, isActive }) => (
-                                    <ScaleDecorator>
-                                        <TouchableOpacity
-                                            onLongPress={drag}
-                                            disabled={isActive}
-                                            activeOpacity={1}
-                                            style={{
-                                                opacity: isActive ? 0.7 : 1,
-                                            }}
-                                        >
-                                            <TaskCard
-                                                task={item}
-                                                onEdit={(id) =>
-                                                    router.push({
-                                                        pathname: "/task",
-                                                        params: { id },
-                                                    })
-                                                }
-                                                onDelete={openDeleteModal}
-                                            />
-                                        </TouchableOpacity>
-                                    </ScaleDecorator>
-                                )}
-                            />
+                            <View
+                                style={[
+                                    styles.tasksContainer,
+                                    { borderColor: group.grupo_cor },
+                                ]}
+                            >
+                                <DraggableFlatList<TaskWithGroup>
+                                    data={group.tasks}
+                                    keyExtractor={(item) => item.id.toString()}
+                                    onDragEnd={({ data }) =>
+                                        handleDragEnd(group.grupo_id, data)
+                                    }
+                                    scrollEnabled={false}
+                                    activationDistance={20}
+                                    renderItem={({ item, drag, isActive }) => (
+                                        <ScaleDecorator>
+                                            <TouchableOpacity
+                                                onLongPress={drag}
+                                                disabled={isActive}
+                                                activeOpacity={1}
+                                                style={{
+                                                    opacity: isActive ? 0.7 : 1,
+                                                }}
+                                            >
+                                                <TaskCard
+                                                    task={item}
+                                                    onEdit={(id) =>
+                                                        router.push({
+                                                            pathname: "/task",
+                                                            params: { id },
+                                                        })
+                                                    }
+                                                    onDelete={openDeleteModal}
+                                                />
+                                            </TouchableOpacity>
+                                        </ScaleDecorator>
+                                    )}
+                                />
+                            </View>
                         </View>
-                    </View>
-                ))}
+                    ))}
+                </NestableScrollContainer>
 
                 {/* <View style={styles.listContainer}>
                     <DraggableFlatList
@@ -265,11 +270,13 @@ const styles = StyleSheet.create({
     groupSection: { marginBottom: 20, paddingHorizontal: 0 },
     groupHeader: { marginBottom: 8 },
     groupName: { fontSize: 14, fontWeight: "700", color: "#8A9AFA" },
+    content: { flex: 1, padding: 15, marginTop: 10 },
     tasksContainer: {
         borderRadius: 15,
         borderWidth: 1,
         overflow: "hidden",
         padding: 10,
+        height: 300,
     },
     listContainer: { padding: 20 },
     emptyText: {

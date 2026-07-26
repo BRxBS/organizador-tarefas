@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         backgroundColor: "#2A2A2A",
         borderRadius: 15,
-        height: 250, // Altura para caber aprox 3 tarefas e permitir scroll
+        height: 250,
         overflow: "hidden",
         borderWidth: 1,
         borderColor: "#444",

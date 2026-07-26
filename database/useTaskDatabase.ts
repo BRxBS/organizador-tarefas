@@ -54,6 +54,7 @@ export function useTaskDatabase() {
 
             // 5. Agora retornamos o ID para quem chamou a função create
             console.log("Tarefa e dias salvos com sucesso! ID:", insertedId);
+            await db.execAsync("PRAGMA wal_checkpoint(FULL);");
             updateWidget();
             return insertedId;
         } catch (error) {

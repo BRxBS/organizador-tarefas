@@ -47,6 +47,19 @@ export default function HomeScreen() {
                 </View>
                 <GroupList home={true} groups={groups} />
 
+                {/* <View style={styles.sectionHeader}>
+                    <ThemedText style={styles.sectionTitle}>GRUPOS</ThemedText>
+                    <TouchableOpacity
+                        onPress={() => router.push("/screens/alarm")}
+                    >
+                        <Ionicons
+                            name="settings-sharp"
+                            size={20}
+                            color="#8A9AFA"
+                        />
+                    </TouchableOpacity>
+                </View> */}
+
                 <View style={styles.sectionHeader}>
                     <ThemedText style={styles.sectionTitle}>TAREFAS</ThemedText>
                 </View>

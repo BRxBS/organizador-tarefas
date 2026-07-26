@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/checklist_item_container"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:paddingTop="4dp"
+    android:paddingBottom="4dp"
+    android:gravity="center_vertical">
+
+    <ImageView
+        android:id="@+id/checklist_item_icone"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:src="@android:drawable/checkbox_off_background"
+        android:layout_marginEnd="8dp" />
+
+    <TextView
+        android:id="@+id/checklist_item_nome"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="#EEEEEE"
+        android:textSize="14sp" />
+
+</LinearLayout>

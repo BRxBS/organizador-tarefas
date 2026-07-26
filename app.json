@@ -8,6 +8,18 @@
         "scheme": "org",
         "userInterfaceStyle": "automatic",
         "newArchEnabled": true,
+        "intentFilters": [
+            {
+                "action": "VIEW",
+                "autoVerify": true,
+                "data": [
+                    {
+                        "scheme": "org"
+                    }
+                ],
+                "category": ["BROWSABLE", "DEFAULT"]
+            }
+        ],
         "ios": {
             "supportsTablet": true,
             "bundleIdentifier": "com.anonymous.org"

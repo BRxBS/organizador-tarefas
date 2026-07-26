@@ -3,6 +3,7 @@ import {
     DefaultTheme,
     ThemeProvider,
 } from "@react-navigation/native";
+import * as Linking from "expo-linking";
 import * as NavigationBar from "expo-navigation-bar";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -36,6 +37,13 @@ export default function RootLayout() {
         }
     }, []);
 
+    useEffect(() => {
+        const subscription = Linking.addEventListener("url", ({ url }) => {
+            console.log("Deep link recebido:", url);
+        });
+        return () => subscription.remove();
+    }, []);
+
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
             <ThemeProvider
@@ -63,6 +71,20 @@ export default function RootLayout() {
                                 options={{
                                     headerShown: false, // Recomendado esconder o header padrão já que você usa o Parallax
                                     title: "Todas as tarefas",
+                                }}
+                            />
+                            <Stack.Screen
+                                name="screens/cronometro"
+                                options={{
+                                    headerShown: false, // Geralmente cronômetros usam a tela cheia
+                                    title: "Cronômetro",
+                                }}
+                            />
+                            <Stack.Screen
+                                name="screens/alarm"
+                                options={{
+                                    headerShown: false, // Geralmente cronômetros usam a tela cheia
+                                    title: "Alarme",
                                 }}
                             />
                         </Stack>
